@@ -1,0 +1,64 @@
+### General OS and IDE files ###
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+~$*
+Thumbs.db
+
+### VSCode-specific ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+### Go ###
+# Binaries
+*/bin/
+*/pkg/
+/bin/
+/pkg/
+
+# Dependency directories
+*/vendor/
+/vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Test output
+*.test
+*.out
+
+### Logs and databases ###
+*.log
+*.sqlite
+*.db
+
+### Environment files ###
+.env
+.env.local
+.env.*.local
+
+### Build artifacts ###
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+### Project-specific ignores ###
+# Docker compose override files
+docker-compose.override.yml
+
+# Config overrides
+configs/local/
+configs/*.local.*
+
+# Binaries for each app
+apps/*/bin/
+apps/*/pkg/
