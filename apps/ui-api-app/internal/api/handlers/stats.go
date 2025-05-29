@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +12,7 @@ type StatsHandler struct {
 	statsService *service.StatsService
 }
 
-func NewStatsService(statsService *service.StatsService) *StatsHandler {
+func NewStatsHandler(statsService *service.StatsService) *StatsHandler {
 	return &StatsHandler{statsService: statsService}
 }
 
@@ -20,12 +21,12 @@ func (statsHandler *StatsHandler) RegisterRoutes(router *gin.Engine) {
 }
 
 func (statsHandler *StatsHandler) GetStats(c *gin.Context) {
-	// ctx := context.Background()
+	ctx := context.Background()
 
 	rangeType := c.DefaultQuery("range", "hour")
 	statsType := c.DefaultQuery("type", "errors")
 
-	stats, err := statsHandler.statsService.GetStatsByStatsTypeAndRange(statsType, rangeType)
+	stats, err := statsHandler.statsService.GetStatsByStatsTypeAndRange(ctx, statsType, rangeType)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid stats type"})

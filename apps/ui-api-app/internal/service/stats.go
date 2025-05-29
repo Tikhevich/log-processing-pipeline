@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -31,7 +32,7 @@ func NewStatsService(repo repositories.LogRepository, redis *redis.Client) *Stat
 	return &StatsService{repo: repo, redis: redis}
 }
 
-func (s *StatsService) GetStatsByStatsTypeAndRange(statsType, rangeType string) (StatsStruct, error) {
+func (s *StatsService) GetStatsByStatsTypeAndRange(ctx context.Context, statsType, rangeType string) (StatsStruct, error) {
 	var statsStruct StatsStruct
 
 	// cacheKey := fmt.Sprintf("stats:%v:%v", statsType, rangeType)
@@ -53,17 +54,17 @@ func (s *StatsService) GetStatsByStatsTypeAndRange(statsType, rangeType string) 
 	switch statsType {
 	case "errors":
 		statsStruct.Type = statsType
-		stats, _ := s.GetErrorStats(rangeType)
+		stats, _ := s.getErrorStats(ctx, rangeType)
 		statsStruct.Data = stats
 
 	case "traffic":
 		statsStruct.Type = statsType
-		stats, _ := s.GetTrafficStats(rangeType)
+		stats, _ := s.getTrafficStats(ctx, rangeType)
 		statsStruct.Data = stats
 
 	case "latency":
 		statsStruct.Type = statsType
-		stats, _ := s.GetLatencyStats(rangeType)
+		stats, _ := s.getLatencyStats(ctx, rangeType)
 		statsStruct.Data = stats
 	default:
 		panic("Invalid statsType")
@@ -72,10 +73,10 @@ func (s *StatsService) GetStatsByStatsTypeAndRange(statsType, rangeType string) 
 	return statsStruct, nil
 }
 
-func (s *StatsService) GetErrorStats(rangeType string) (map[int]int64, error) {
+func (s *StatsService) getErrorStats(ctx context.Context, rangeType string) (map[int]int64, error) {
 	from, to := getTimeRange(rangeType)
 
-	data, err := s.repo.GetErrorStats(from, to)
+	data, err := s.repo.GetErrorStats(ctx, from, to)
 	if err != nil {
 		return data, err
 	}
@@ -83,11 +84,11 @@ func (s *StatsService) GetErrorStats(rangeType string) (map[int]int64, error) {
 	return data, nil
 }
 
-func (s *StatsService) GetTrafficStats(rangeType string) (TrafficStats, error) {
+func (s *StatsService) getTrafficStats(ctx context.Context, rangeType string) (TrafficStats, error) {
 	from, to := getTimeRange(rangeType)
 	var trafficStats TrafficStats
 
-	total, unique, err := s.repo.GetTrafficStats(from, to)
+	total, unique, err := s.repo.GetTrafficStats(ctx, from, to)
 	if err != nil {
 		return trafficStats, err
 	}
@@ -98,11 +99,11 @@ func (s *StatsService) GetTrafficStats(rangeType string) (TrafficStats, error) {
 	return trafficStats, nil
 }
 
-func (s *StatsService) GetLatencyStats(rangeType string) (LatencyStats, error) {
+func (s *StatsService) getLatencyStats(ctx context.Context, rangeType string) (LatencyStats, error) {
 	from, to := getTimeRange(rangeType)
 	var latencyStats LatencyStats
 
-	avg, max, err := s.repo.GetLatencyStats(from, to)
+	avg, max, err := s.repo.GetLatencyStats(ctx, from, to)
 
 	if err != nil {
 		return latencyStats, err

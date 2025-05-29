@@ -14,13 +14,13 @@ type logRepository struct {
 }
 
 // GetErrorStats implements LogRepository.
-func (r *logRepository) GetErrorStats(from time.Time, to time.Time) (map[int]int64, error) {
+func (r *logRepository) GetErrorStats(ctx context.Context, from time.Time, to time.Time) (map[int]int64, error) {
 	var results []struct {
 		Status int
 		Count  int64
 	}
 
-	err := r.db.Model(&models.LogEntry{}).
+	err := r.db.WithContext(ctx).Model(&models.LogEntry{}).
 		Select("status, COUNT(*) as count").
 		Where("timestamp BETWEEN ? AND ?", from, to).
 		Where("status <> ?", http.StatusOK).
@@ -37,13 +37,13 @@ func (r *logRepository) GetErrorStats(from time.Time, to time.Time) (map[int]int
 }
 
 // GetLatencyStats implements LogRepository.
-func (r *logRepository) GetLatencyStats(from time.Time, to time.Time) (avg float64, max int64, err error) {
+func (r *logRepository) GetLatencyStats(ctx context.Context, from time.Time, to time.Time) (avg float64, max int64, err error) {
 	var result struct {
 		Avg float64
 		Max int64
 	}
 
-	err = r.db.Model(&models.LogEntry{}).
+	err = r.db.WithContext(ctx).Model(&models.LogEntry{}).
 		Select("AVG(latency_ms) as avg, MAX(latency_ms) as max").
 		Where("timestamp BETWEEN ? AND ?", from, to).
 		Scan(&result).
@@ -53,13 +53,13 @@ func (r *logRepository) GetLatencyStats(from time.Time, to time.Time) (avg float
 }
 
 // GetTrafficStats implements LogRepository.
-func (r *logRepository) GetTrafficStats(from time.Time, to time.Time) (total int64, unique int64, err error) {
+func (r *logRepository) GetTrafficStats(ctx context.Context, from time.Time, to time.Time) (total int64, unique int64, err error) {
 	var result struct {
 		UniqueIps     int64
 		TotalRequests int64
 	}
 
-	err = r.db.Model(&models.LogEntry{}).
+	err = r.db.WithContext(ctx).Model(&models.LogEntry{}).
 		Select("COUNT(DISTINCT ip) as unique_ips, COUNT(*) as total_requests").
 		Where("timestamp BETWEEN ? AND ?", from, to).
 		Scan(&result).

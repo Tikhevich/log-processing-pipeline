@@ -2,17 +2,19 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 	"ui_api.go/internal/models"
 	"ui_api.go/internal/repositories"
+	"ui_api.go/internal/service"
 )
+
+type LogsHandler struct {
+	logsService *service.LogsService
+}
 
 type LogsResponse struct {
 	Data []models.LogEntry `json:"data"`
@@ -23,18 +25,39 @@ type LogsResponse struct {
 	} `json:"meta"`
 }
 
-func GetLogs(c *gin.Context) {
+func NewLogsHandler(logsService *service.LogsService) *LogsHandler {
+	return &LogsHandler{logsService: logsService}
+}
 
-	db, err := gorm.Open(mysql.Open("app_user:app_pass@tcp(localhost:3306)/log_db?charset=utf8mb4&parseTime=True"))
-	if err != nil {
-		fmt.Println(err)
-	}
+func (logsHandler *LogsHandler) RegisterRoutes(router *gin.Engine) {
+	router.GET("/logs", logsHandler.GetLogs)
+}
 
-	logRepo := repositories.GetLogRepository(db)
-
+func (h *LogsHandler) GetLogs(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
+	filter := getPreparedFilterBasedonContext(c)
+	ctx := context.Background()
+
+	logs, total, err := h.logsService.GetLogsByParams(ctx, filter, limit, offset)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := LogsResponse{
+		Data: logs,
+	}
+	response.Meta.Total = total
+	response.Meta.Limit = limit
+	response.Meta.Offset = offset
+
+	c.JSON(http.StatusOK, response)
+}
+
+func getPreparedFilterBasedonContext(c *gin.Context) repositories.LogFilter {
 	filter := repositories.LogFilter{
 		IP:     c.Query("ip"),
 		Method: c.Query("method"),
@@ -59,20 +82,5 @@ func GetLogs(c *gin.Context) {
 		}
 	}
 
-	ctx := context.Background()
-
-	logs, total, err := logRepo.GetFilteredLogs(ctx, filter, limit, offset)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	response := LogsResponse{
-		Data: logs,
-	}
-	response.Meta.Total = total
-	response.Meta.Limit = limit
-	response.Meta.Offset = offset
-
-	c.JSON(http.StatusOK, response)
+	return filter
 }
