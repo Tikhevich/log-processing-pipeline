@@ -49,5 +49,17 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
 
+  ui-api-app:
+    build:
+      context: ./apps/ui-api-app
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    container_name: ui-api-app
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - mysql
+
 volumes:
   mysql_data:
