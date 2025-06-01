@@ -61,5 +61,15 @@ services:
       - redis
       - mysql
 
+  log-processor-app:
+    build:
+      context: ./apps/log-processor-app
+      dockerfile: Dockerfile
+    container_name: log-processor-app
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - kafka
+
 volumes:
   mysql_data:

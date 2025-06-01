@@ -1,18 +1,15 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log"
-	"net/http"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"worker.go/internal/config"
 	"worker.go/internal/consumer"
 	"worker.go/internal/models"
-	"worker.go/internal/parser"
 	"worker.go/internal/repositories"
+	"worker.go/internal/service"
 )
 
 func main() {
@@ -20,15 +17,19 @@ func main() {
 
 	db, err := gorm.Open(mysql.Open(workerConfig.DBDSN))
 	if err != nil {
-		fmt.Println(err)
+		panic(fmt.Errorf("Couldn't connect to database: %w", err))
 	}
 
 	err = db.AutoMigrate(&models.LogEntry{})
 	if err != nil {
-		panic(fmt.Sprintf("failed to migrate database: %v", err))
+		panic(fmt.Errorf("Failed to migrate database: %w", err))
 	}
 
+	fmt.Println("Waiting for messages...")
+
 	logRepo := repositories.GetLogRepository(db)
+
+	brokerMessageProcessingService := service.NewBrokerMessageProcessingService(logRepo)
 
 	kafkaConsumer := consumer.New(workerConfig)
 
@@ -38,33 +39,14 @@ func main() {
 			break
 		}
 
-		newLogs, err := parser.ParseLogs(message.Value)
-		if err != nil {
-			log.Printf("Failed to parse log: %v", err)
-		}
+		stats := brokerMessageProcessingService.ProcessBrokerMessage(message.Value)
 
-		ctx := context.Background()
-
-		var countOfAddedLogs int
-		for _, newLog := range newLogs {
-			// Skip 200 ok status logs
-			if newLog.Status == http.StatusOK {
-				continue
-			}
-
-			err = logRepo.Create(ctx, &newLog)
-			if err != nil {
-				log.Printf("Failed to create log: %v", err)
-			}
-			countOfAddedLogs++
-		}
-		fmt.Printf("Length of new logs : %v \n", len(newLogs))
-		fmt.Printf("Actualy added logs : %v \n", countOfAddedLogs)
+		fmt.Printf("Processed log count: %v \n", stats.Processed)
+		fmt.Printf("Count of logs except 200 ok status : %v \n", stats.Added)
 	}
 
 	err = kafkaConsumer.Close()
 	if err != nil {
-		log.Fatal("failed to close reader:", err)
+		panic(fmt.Errorf("Failed to close reader: %w", err))
 	}
-
 }
