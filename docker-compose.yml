@@ -71,5 +71,20 @@ services:
       - mysql
       - kafka
 
+  log-receiver-api-app:
+    build:
+      context: ./apps/log-receiver-api-app
+      dockerfile: Dockerfile
+    container_name: log-receiver-api-app
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_HOST: broker
+      KAFKA_PORT: 29092
+      KAFKA_LOG_TOPIC_NAME: raw-logs
+
 volumes:
   mysql_data:

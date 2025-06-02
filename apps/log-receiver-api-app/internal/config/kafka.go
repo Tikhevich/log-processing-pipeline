@@ -13,9 +13,10 @@ type KafkaConfig struct {
 func Load() *KafkaConfig {
 	kafkaHost := os.Getenv("KAFKA_HOST")
 	kafkaPort := os.Getenv("KAFKA_PORT")
+	kafkaTopicName := os.Getenv("KAFKA_LOG_TOPIC_NAME")
 
 	return &KafkaConfig{
 		KafkaBrokers: []string{fmt.Sprintf("%v:%v", kafkaHost, kafkaPort)},
-		KafkaTopic:   "raw-logs",
+		KafkaTopic:   kafkaTopicName,
 	}
 }
