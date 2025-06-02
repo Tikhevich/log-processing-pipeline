@@ -86,5 +86,19 @@ services:
       KAFKA_PORT: 29092
       KAFKA_LOG_TOPIC_NAME: raw-logs
 
+  log-generator-app:
+    build:
+      context: ./apps/log-generator-app
+      dockerfile: Dockerfile
+    container_name: log-generator-app
+    restart: unless-stopped
+    environment:
+      RPS: 1 # Requests per seconds
+      TARGET_API_URL: "http://log-receiver-api-app:8080/upload" # Target Api URL for uploading logs
+      CLIENT_ERROR_FREQ: 0.2 # Client Errors Frequency Float value in range from 0.1 to 0.4
+      SERVER_ERROR_FREQ: 0.1 # Server Errors Frequency Float value in range from 0.1 to 0.4
+      QTY_IN_BATCH: 100 # Quantity of logs records per request
+
+
 volumes:
   mysql_data:
