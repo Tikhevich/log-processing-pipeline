@@ -1,7 +1,9 @@
 # 🧪 Log Processing Pipeline — Pet Project in Go
 This pet project is built as a way to learn the Go programming language and to practice designing a microservice architecture using Kafka, MySQL, Redis, and Docker.
 
-## 🔧 Idea & Structure
+## Project Architecture
+![Project Architecture](./assets/diagrams/architecture.svg)
+
 The project implements a simple log processing pipeline consisting of the following components:
 
 ### log-generator-app
@@ -20,6 +22,43 @@ Retrieve logs for specific time ranges (hour, day, week)
 
 Get statistics on errors, traffic, and latency
 These results are cached in Redis for a limited time. If not found in cache, data is fetched from MySQL.
+
+## 🗂 Project Structure
+
+```lua
+├── LICENSE
+├── README.md
+├── apps
+│   ├── log-generator-app
+│   ├── log-processor-app
+│   ├── log-receiver-api-app
+│   └── ui-api-app
+├── assets
+│   └── diagrams
+└── docker-compose.yml
+```
+Each app is an independent Go service with its own go.mod, go.sum, internal logic and a main file located under cmd/.
+
+## Interaction Diagram
+![Interaction Diagram](./assets/diagrams/interaction.svg)
+
+### Frame 1 - Receiving logs
+`log-generator-app` generates logs, which are sent via API request to `log-receiver-api-app`. They are then processed and sent to the `Kafka` broker.
+
+### Frame 2 - Processing logs
+`log-processor-app` receives messages from the `Kafka` broker, processes them, discarding logs with a status code of 200 OK, and stores everything else in a `MySQL` database.
+
+### Frame 3 - Get stats from cache
+`ui-api-app` receives an API request to get statistics, then checks if these statistics are cached in `Redis`. If so, we immediately give them to the user without delay
+
+### Frame 4 - Get stats from DB and add to cache
+`ui-api-app` receives an API request to get statistics, then checks if these statistics are cached in `Redis`. If not, a request is sent to the `MySQL` database to get statistics, after that, it is additionally cached in `Redis` and returned to the user
+
+### Frame 5 - Get logs
+`ui-api-app` receives an API request to retrieve logs, collects the appropriate filter if specified, then a request is made to `MySQL` database and the prepared data with the possibility of pagination is returned to the user.
+
+
+## API description for ui-api-app 
 
 #### `GET /logs?...`
 
@@ -111,22 +150,6 @@ GET http://localhost:8081/stats?range=day&type=latency
     }
 }
 ```
-
-## 🗂 Project Structure
-
-```lua
-├── LICENSE
-├── README.md
-├── apps
-│   ├── log-generator-app
-│   ├── log-processor-app
-│   ├── log-receiver-api-app
-│   └── ui-api-app
-└── docker-compose.yml
-```
-
-Each app is an independent Go service with its own go.mod, go.sum, internal logic and a main file located under cmd/.
-
 
 ## ⚠️ Development Status
 ***The project is under active development. Structure, code, and documentation may evolve.***
