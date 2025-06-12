@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -35,21 +37,14 @@ func NewStatsService(repo repositories.LogRepository, redis *redis.Client) *Stat
 func (s *StatsService) GetStatsByStatsTypeAndRange(ctx context.Context, statsType, rangeType string) (StatsStruct, error) {
 	var statsStruct StatsStruct
 
-	// cacheKey := fmt.Sprintf("stats:%v:%v", statsType, rangeType)
-
-	// redisClient := redis.NewClient(&redis.Options{
-	// 	Addr: "localhost:6379",
-	// 	DB:   0,
-	// })
-
-	// cachedData, err := redisClient.Get(ctx, cacheKey).Result()
-	// if err == nil {
-	// 	var response any
-	// 	if err := json.Unmarshal([]byte(cachedData), &response); err == nil {
-	// 		c.JSON(http.StatusOK, response)
-	// 		return
-	// 	}
-	// }
+	cacheKey := fmt.Sprintf("stats:%v:%v", statsType, rangeType)
+	cachedData, err := s.redis.Get(ctx, cacheKey).Result()
+	if err == nil {
+		err := json.Unmarshal([]byte(cachedData), &statsStruct)
+		if err == nil {
+			return statsStruct, nil
+		}
+	}
 
 	switch statsType {
 	case "errors":
@@ -69,6 +64,8 @@ func (s *StatsService) GetStatsByStatsTypeAndRange(ctx context.Context, statsTyp
 	default:
 		panic("Invalid statsType")
 	}
+
+	s.saveToCache(ctx, statsStruct, cacheKey, rangeType)
 
 	return statsStruct, nil
 }
@@ -129,23 +126,23 @@ func getTimeRange(rangeType string) (from, to time.Time) {
 	}
 }
 
-// func getTTLByRange(rangeType string) time.Duration {
-// 	switch rangeType {
-// 	case "hour":
-// 		return 2 * time.Minute
-// 	case "day":
-// 		return 10 * time.Minute
-// 	case "week":
-// 		return 30 * time.Minute
-// 	default:
-// 		return 2 * time.Minute
-// 	}
-// }
+func getTTLByRange(rangeType string) time.Duration {
+	switch rangeType {
+	case "hour":
+		return 2 * time.Minute
+	case "day":
+		return 10 * time.Minute
+	case "week":
+		return 30 * time.Minute
+	default:
+		return 2 * time.Minute
+	}
+}
 
-// func cacheAndReturn[T any](ctx context.Context, c *gin.Context, redisClient *redis.Client, key string, response T, rangeType string) {
-// 	data, err := json.Marshal(response)
-// 	if err == nil {
-// 		_ = redisClient.Set(ctx, key, data, getTTLByRange(rangeType)).Err()
-// 	}
-// 	c.JSON(http.StatusOK, response)
-// }
+func (s *StatsService) saveToCache(ctx context.Context, statsData StatsStruct, key string, rangeType string) {
+	data, err := json.Marshal(statsData)
+	if err == nil {
+		ttl := getTTLByRange(rangeType)
+		_ = s.redis.Set(ctx, key, data, ttl).Err()
+	}
+}
